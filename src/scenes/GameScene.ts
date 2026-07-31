@@ -1,8 +1,12 @@
 import Phaser from 'phaser'
+import { ITEMS } from '../data/items'
+import { TOTAL_TIERS } from '../game/growth'
+import { pickSpawnTier, pickItemIndexInTier } from '../game/spawning'
 
 const BASE_WORLD_SIZE = 800
 const BASE_RADIUS = 20
 const MOVE_SPEED = 260
+const MAX_ITEMS_ON_SCREEN = 30
 
 function zoomForTier(tier: number): number {
   return Math.max(0.4, 1 - tier * 0.05)
@@ -15,6 +19,8 @@ interface GameSceneData {
 export class GameScene extends Phaser.Scene {
   protected hardMode = false
   protected blackHole!: Phaser.Physics.Arcade.Image
+  protected itemsGroup!: Phaser.Physics.Arcade.Group
+  protected currentTier = 0
   private pointerTarget = new Phaser.Math.Vector2()
 
   constructor() {
@@ -46,6 +52,14 @@ export class GameScene extends Phaser.Scene {
       const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y)
       this.pointerTarget.set(world.x, world.y)
     })
+
+    this.itemsGroup = this.physics.add.group()
+
+    this.time.addEvent({
+      delay: this.hardMode ? 200 : 300,
+      loop: true,
+      callback: () => this.spawnItem(),
+    })
   }
 
   update(): void {
@@ -67,5 +81,23 @@ export class GameScene extends Phaser.Scene {
       this.pointerTarget.y
     )
     this.physics.velocityFromRotation(angle, MOVE_SPEED, body.velocity)
+  }
+
+  protected spawnItem(): void {
+    if (this.itemsGroup.countActive(true) >= MAX_ITEMS_ON_SCREEN) return
+
+    const tierIndex = pickSpawnTier(this.currentTier, TOTAL_TIERS, Math.random())
+    const itemsInTier = ITEMS.filter((item) => item.tierIndex === tierIndex)
+    const item = itemsInTier[pickItemIndexInTier(Math.random(), itemsInTier.length)]
+
+    const bounds = this.physics.world.bounds
+    const x = Phaser.Math.Between(bounds.x + 20, bounds.right - 20)
+    const y = Phaser.Math.Between(bounds.y + 20, bounds.bottom - 20)
+
+    const sprite = this.itemsGroup.create(x, y, item.id) as Phaser.Physics.Arcade.Image
+    sprite.setCircle(32)
+    sprite.setDisplaySize(28, 28)
+    sprite.setData('itemId', item.id)
+    sprite.setData('tierIndex', tierIndex)
   }
 }
