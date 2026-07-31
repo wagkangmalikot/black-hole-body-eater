@@ -24,6 +24,7 @@ export class MenuScene extends Phaser.Scene {
 
     this.input.once('pointerdown', () => {
       this.scene.start('GameScene', { hardMode: false })
+      this.scene.launch('UIScene')
     })
   }
 }
