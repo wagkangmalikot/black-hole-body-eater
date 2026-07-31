@@ -14,6 +14,7 @@ const MAX_ITEMS_ON_SCREEN = 30
 const WORLD_GROWTH_PER_TIER = 150
 const RADIUS_GROWTH_PER_TIER = 6
 const HAZARD_INVULNERABLE_MS = 1000
+const HAZARD_KNOCKBACK_MS = 300
 
 function zoomForTier(tier: number): number {
   return Math.max(0.4, 1 - tier * 0.05)
@@ -39,6 +40,7 @@ export class GameScene extends Phaser.Scene {
   private growth!: GrowthController
   private discovery!: DiscoveryTracker
   private invulnerableUntil = 0
+  private knockbackUntil = 0
 
   constructor() {
     super('GameScene')
@@ -52,6 +54,7 @@ export class GameScene extends Phaser.Scene {
     this.growth = new GrowthController(this.hardMode ? 4 : 6)
     this.discovery = new DiscoveryTracker()
     this.invulnerableUntil = 0
+    this.knockbackUntil = 0
 
     const size = BASE_WORLD_SIZE
     this.physics.world.setBounds(0, 0, size, size)
@@ -90,6 +93,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(): void {
+    if (this.time.now < this.knockbackUntil) return
+
     const body = this.blackHole.body as Phaser.Physics.Arcade.Body
     const distance = Phaser.Math.Distance.Between(
       this.blackHole.x,
@@ -137,6 +142,7 @@ export class GameScene extends Phaser.Scene {
       if (this.time.now < this.invulnerableUntil) return
       this.growth.recordHazard()
       this.invulnerableUntil = this.time.now + HAZARD_INVULNERABLE_MS
+      this.knockbackUntil = this.time.now + HAZARD_KNOCKBACK_MS
 
       const angle = Phaser.Math.Angle.Between(itemSprite.x, itemSprite.y, this.blackHole.x, this.blackHole.y)
       const body = this.blackHole.body as Phaser.Physics.Arcade.Body
