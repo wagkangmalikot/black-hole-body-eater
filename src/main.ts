@@ -3,6 +3,7 @@ import { BootScene } from './scenes/BootScene'
 import { MenuScene } from './scenes/MenuScene'
 import { GameScene } from './scenes/GameScene'
 import { UIScene } from './scenes/UIScene'
+import { WinScene } from './scenes/WinScene'
 
 new Phaser.Game({
   type: Phaser.AUTO,
@@ -17,5 +18,5 @@ new Phaser.Game({
     default: 'arcade',
     arcade: { gravity: { x: 0, y: 0 }, debug: false },
   },
-  scene: [BootScene, MenuScene, GameScene, UIScene],
+  scene: [BootScene, MenuScene, GameScene, UIScene, WinScene],
 })
