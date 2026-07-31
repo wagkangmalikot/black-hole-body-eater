@@ -1,5 +1,5 @@
-export const TOTAL_TIERS = 11
-export const EATS_PER_TIER = 6
+export const TOTAL_TIERS = 55
+export const EATS_PER_TIER = 3
 export const HAZARD_PENALTY = 2
 
 export type ContactKind = 'eat' | 'hazard'

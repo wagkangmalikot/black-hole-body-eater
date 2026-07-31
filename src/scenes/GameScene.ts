@@ -15,6 +15,9 @@ const WORLD_GROWTH_PER_TIER = 150
 const RADIUS_GROWTH_PER_TIER = 6
 const HAZARD_INVULNERABLE_MS = 1000
 const HAZARD_KNOCKBACK_MS = 300
+const ITEM_AWARENESS_RADIUS = 180
+const ITEM_FLEE_SPEED = 140
+const ITEM_CHASE_SPEED = 150
 
 function zoomForTier(tier: number): number {
   return Math.max(0.4, 1 - tier * 0.05)
@@ -41,6 +44,7 @@ export class GameScene extends Phaser.Scene {
   private discovery!: DiscoveryTracker
   private invulnerableUntil = 0
   private knockbackUntil = 0
+  private background!: Phaser.GameObjects.Graphics
 
   constructor() {
     super('GameScene')
@@ -51,7 +55,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.growth = new GrowthController(this.hardMode ? 4 : 6)
+    this.growth = new GrowthController(this.hardMode ? 2 : 3)
     this.discovery = new DiscoveryTracker()
     this.invulnerableUntil = 0
     this.knockbackUntil = 0
@@ -60,6 +64,7 @@ export class GameScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, size, size)
     this.cameras.main.setBounds(0, 0, size, size)
     this.cameras.main.setZoom(zoomForTier(0))
+    this.drawBackground(size)
 
     this.blackHole = this.physics.add.image(size / 2, size / 2, 'black-hole')
     this.blackHole.setCircle(BASE_RADIUS)
@@ -93,6 +98,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(): void {
+    this.updateItemBehavior()
+
     if (this.time.now < this.knockbackUntil) return
 
     const body = this.blackHole.body as Phaser.Physics.Arcade.Body
@@ -115,6 +122,48 @@ export class GameScene extends Phaser.Scene {
     this.physics.velocityFromRotation(angle, MOVE_SPEED, body.velocity)
   }
 
+  private updateItemBehavior(): void {
+    const currentTier = this.growth.getState().currentTier
+
+    this.itemsGroup.children.each((child) => {
+      const sprite = child as Phaser.Physics.Arcade.Image
+      const body = sprite.body as Phaser.Physics.Arcade.Body
+      const tierIndex = sprite.getData('tierIndex') as number
+      const distance = Phaser.Math.Distance.Between(sprite.x, sprite.y, this.blackHole.x, this.blackHole.y)
+
+      if (distance >= ITEM_AWARENESS_RADIUS) {
+        body.setVelocity(0, 0)
+        return true
+      }
+
+      if (tierIndex <= currentTier) {
+        const angle = Phaser.Math.Angle.Between(this.blackHole.x, this.blackHole.y, sprite.x, sprite.y)
+        this.physics.velocityFromRotation(angle, ITEM_FLEE_SPEED, body.velocity)
+      } else {
+        const angle = Phaser.Math.Angle.Between(sprite.x, sprite.y, this.blackHole.x, this.blackHole.y)
+        this.physics.velocityFromRotation(angle, ITEM_CHASE_SPEED, body.velocity)
+      }
+      return true
+    })
+  }
+
+  private drawBackground(size: number): void {
+    if (this.background) this.background.destroy()
+    this.background = this.add.graphics()
+    this.background.setDepth(-10)
+    this.background.fillStyle(0x1c1840, 1)
+    this.background.fillRect(0, 0, size, size)
+
+    const dotCount = Math.floor((size * size) / 6000)
+    for (let i = 0; i < dotCount; i++) {
+      const x = Phaser.Math.Between(0, size)
+      const y = Phaser.Math.Between(0, size)
+      const r = Phaser.Math.Between(1, 3)
+      this.background.fillStyle(0x2e2a5e, 0.6)
+      this.background.fillCircle(x, y, r)
+    }
+  }
+
   protected spawnItem(): void {
     if (this.itemsGroup.countActive(true) >= MAX_ITEMS_ON_SCREEN) return
 
@@ -129,6 +178,8 @@ export class GameScene extends Phaser.Scene {
     const sprite = this.itemsGroup.create(x, y, item.id) as Phaser.Physics.Arcade.Image
     sprite.setCircle(32)
     sprite.setDisplaySize(28, 28)
+    sprite.setCollideWorldBounds(true)
+    sprite.setBounce(1, 1)
     sprite.setData('itemId', item.id)
     sprite.setData('tierIndex', tierIndex)
   }
@@ -183,5 +234,6 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, size, size)
     this.cameras.main.zoomTo(zoomForTier(tier), 500)
     this.blackHole.setScale(radiusForTier(tier) / BASE_RADIUS)
+    this.drawBackground(size)
   }
 }

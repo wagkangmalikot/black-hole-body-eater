@@ -8,7 +8,7 @@ import { WinScene } from './scenes/WinScene'
 new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'app',
-  backgroundColor: '#0a0a1a',
+  backgroundColor: '#1c1840',
   scale: {
     mode: Phaser.Scale.RESIZE,
     width: window.innerWidth,

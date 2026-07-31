@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { ITEMS, TIERS } from './items'
 
 describe('body item data', () => {
-  it('has 11 tiers', () => {
-    expect(TIERS).toHaveLength(11)
+  it('has 55 tiers', () => {
+    expect(TIERS).toHaveLength(55)
   })
 
   it('has contiguous zero-based tier indices', () => {
@@ -14,10 +14,10 @@ describe('body item data', () => {
     expect(ITEMS).toHaveLength(55)
   })
 
-  it('has exactly 5 items per tier', () => {
+  it('has exactly 1 item per tier', () => {
     for (const tier of TIERS) {
       const count = ITEMS.filter((item) => item.tierIndex === tier.index).length
-      expect(count).toBe(5)
+      expect(count).toBe(1)
     }
   })
 
