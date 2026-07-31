@@ -32,6 +32,21 @@ function radiusForTier(tier: number): number {
   return BASE_RADIUS + tier * RADIUS_GROWTH_PER_TIER
 }
 
+function getItemDisplaySize(itemTierIndex: number, currentTier: number): number {
+  const tierDiff = itemTierIndex - currentTier
+  if (tierDiff < 0) {
+    // Item is lower tier than player -> shrink it proportionally as player tier gets higher
+    const scale = Math.max(0.3, 1 + tierDiff * 0.12)
+    return Math.max(10, Math.round(28 * scale))
+  } else if (tierDiff > 0) {
+    // Item is higher tier than player -> larger and more formidable
+    const scale = Math.min(2.0, 1 + tierDiff * 0.2)
+    return Math.round(28 * scale)
+  }
+  return 28
+}
+
+
 interface GameSceneData {
   hardMode?: boolean
 }
@@ -265,9 +280,10 @@ export class GameScene extends Phaser.Scene {
       )
     }
 
-    // 3. Tactical Item Glowing Halos
+    // 3. Tactical Item Glowing Halos & Dynamic Tier Scaling
     this.itemGlowGraphics.clear()
     const currentTier = this.growth.getState().currentTier
+
 
     this.itemsGroup.children.each((child) => {
       const sprite = child as Phaser.Physics.Arcade.Image
@@ -276,20 +292,26 @@ export class GameScene extends Phaser.Scene {
       const tierIndex = sprite.getData('tierIndex') as number
       const isEdible = tierIndex <= currentTier
 
+      // Dynamically update display size relative to player current tier
+      const itemSize = getItemDisplaySize(tierIndex, currentTier)
+      sprite.setDisplaySize(itemSize, itemSize)
+
+      const glowRadius = itemSize * 0.75
+
       if (isEdible) {
         // Cyan / Green Edible Glow
         const pulse = 1 + Math.sin(timeSec * 3 + sprite.x) * 0.1
         this.itemGlowGraphics.fillStyle(0x00f2fe, 0.22)
-        this.itemGlowGraphics.fillCircle(sprite.x, sprite.y, 22 * pulse)
+        this.itemGlowGraphics.fillCircle(sprite.x, sprite.y, glowRadius * 1.2 * pulse)
         this.itemGlowGraphics.lineStyle(1.5, 0x00f2fe, 0.6)
-        this.itemGlowGraphics.strokeCircle(sprite.x, sprite.y, 18 * pulse)
+        this.itemGlowGraphics.strokeCircle(sprite.x, sprite.y, glowRadius * pulse)
       } else {
         // Red / Magenta Hazard Glow
         const warningPulse = 1 + Math.sin(timeSec * 6 + sprite.y) * 0.15
         this.itemGlowGraphics.fillStyle(0xff0055, 0.28)
-        this.itemGlowGraphics.fillCircle(sprite.x, sprite.y, 24 * warningPulse)
+        this.itemGlowGraphics.fillCircle(sprite.x, sprite.y, glowRadius * 1.3 * warningPulse)
         this.itemGlowGraphics.lineStyle(2, 0xff0055, 0.85)
-        this.itemGlowGraphics.strokeCircle(sprite.x, sprite.y, 20 * warningPulse)
+        this.itemGlowGraphics.strokeCircle(sprite.x, sprite.y, glowRadius * 1.05 * warningPulse)
       }
 
       // Gentle floating rotation
@@ -331,7 +353,8 @@ export class GameScene extends Phaser.Scene {
   protected spawnItem(): void {
     if (this.itemsGroup.countActive(true) >= MAX_ITEMS_ON_SCREEN) return
 
-    const tierIndex = pickSpawnTier(this.growth.getState().currentTier, TOTAL_TIERS, Math.random())
+    const currentTier = this.growth.getState().currentTier
+    const tierIndex = pickSpawnTier(currentTier, TOTAL_TIERS, Math.random())
     const itemsInTier = ITEMS.filter((item) => item.tierIndex === tierIndex)
     const item = itemsInTier[pickItemIndexInTier(Math.random(), itemsInTier.length)]
 
@@ -339,15 +362,17 @@ export class GameScene extends Phaser.Scene {
     const x = Phaser.Math.Between(bounds.x + 20, bounds.right - 20)
     const y = Phaser.Math.Between(bounds.y + 20, bounds.bottom - 20)
 
+    const itemSize = getItemDisplaySize(tierIndex, currentTier)
     const sprite = this.itemsGroup.create(x, y, item.id) as Phaser.Physics.Arcade.Image
     sprite.setCircle(32)
-    sprite.setDisplaySize(28, 28)
+    sprite.setDisplaySize(itemSize, itemSize)
     sprite.setCollideWorldBounds(true)
     sprite.setBounce(1, 1)
     sprite.setDepth(2)
     sprite.setData('itemId', item.id)
     sprite.setData('tierIndex', tierIndex)
     sprite.setData('wasAware', false)
+
 
     const idleAngle = Math.random() * Math.PI * 2
     this.physics.velocityFromRotation(idleAngle, ITEM_IDLE_SPEED, (sprite.body as Phaser.Physics.Arcade.Body).velocity)
